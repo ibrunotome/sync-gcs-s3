@@ -14,9 +14,7 @@ But we wanna auto sync between them, right?
 
 This works better to sync huge files like Cloud SQL backups between GCS and S3. A cloud scheduler will call the cloud.run container which will use rclone to sync the buckets. You can see the original article with this idea and code [here](https://medium.com/@salmaan.rashid/rclone-storage-bucket-sync-using-cloud-scheduler-and-cloud-run-f0ecb8052642).
 
-### Setup
-
-1. Configure Service Accounts Cloud Run and Cloud Scheduler:
+### Configure Service Accounts Cloud Run and Cloud Scheduler:
 
 ```bash
 export PROJECT_ID=`gcloud config get-value core/project`
@@ -36,7 +34,7 @@ export SCHEDULER_SERVER_SERVICE_ACCOUNT=rsync-scheduler@$PROJECT_ID.iam.gservice
 gcloud iam service-accounts create rsync-scheduler --display-name "RSYNC Scheduler Account" --project $PROJECT_ID
 ```
 
-2. Configure source and destination GCS Buckets
+### Configure source and destination GCS Buckets
 
 Configure [Uniform Bucket Access Policy](https://cloud.google.com/storage/docs/uniform-bucket-level-access)
 
@@ -44,7 +42,7 @@ Configure [Uniform Bucket Access Policy](https://cloud.google.com/storage/docs/u
 gsutil iam ch serviceAccount:$RSYNC_SERVER_SERVICE_ACCOUNT:objectViewer gs://$RSYNC_SRC
 ```
 
-3. Build and deploy Cloud Run image
+### Build and deploy Cloud Run image
 
 The `server.go` as an extra secondary check for the audience value that the Cloud Scheduler sends.  This is not a necessary step since Cloud Run checks the audience value by itself automatically (see [Authenticating service-to-service](https://cloud.google.com/run/docs/authenticating/overview)).
 
@@ -96,7 +94,7 @@ gcloud run services add-iam-policy-binding rsync --region $REGION --platform=man
   --role=roles/run.invoker
 ```
 
-4. Deploy Cloud Scheduler
+### Deploy Cloud Scheduler
 
 First allow Cloud Scheduler to assume its own service accounts OIDC Token:
 
