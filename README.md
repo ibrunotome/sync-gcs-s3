@@ -130,3 +130,46 @@ gcloud beta scheduler jobs create http rsync-schedule --schedule "0 1 * * *" \
   --oidc-service-account-email=$SCHEDULER_SERVER_SERVICE_ACCOUNT   \
   --oidc-token-audience=$AUDIENCE
 ```
+
+## Sync small files with event based sync and cloud functions
+
+The rclone way works fine, but it's expensive to sync everything. The below method will sync only new files when a new object is created or modificated in the GCS bucket. This method is entire "as is" created and described in [this repo](https://github.com/pendo-io/gcs-s3-sync).
+
+### First, you'll need to define some environment variables:
+
+```
+# Name of your GCP project
+PROJECT=my-gcp-project
+# Name for the runtime config (this MUST match the bucket name)
+CONFIG_NAME=my-source-bucket
+# AWS region in which your S3 bucket was created
+S3_REGION=us-east-1
+# Name of the S3 bucket
+S3_TARGET_BUCKET=my-target-bucket
+# Name for your Cloud Function
+CLOUD_FUNCTION_NAME=syncMyBucket
+# GCS Bucket where Cloud Function zip files are stored.
+GCS_STAGING_BUCKET=my-cloud-function-bucket
+# GCS source bucket to be synced
+GCS_SOURCE_BUCKET=my-source-bucket
+```
+
+### Next, create the runtime config and variables
+
+```
+gcloud --project $PROJECT beta runtime-config configs create $CONFIG_NAME
+gcloud --project $PROJECT beta runtime-config configs variables set aws-access-key $AWS_ACCESS_KEY_ID --config-name=$CONFIG_NAME
+gcloud --project $PROJECT beta runtime-config configs variables set aws-secret-key $AWS_SECRET_ACCESS_KEY --config-name=$CONFIG_NAME
+gcloud --project $PROJECT beta runtime-config configs variables set aws-region $S3_REGION --config-name=$CONFIG_NAME
+gcloud --project $PROJECT beta runtime-config configs variables set aws-bucket $S3_TARGET_BUCKET --config-name=$CONFIG_NAME
+```
+
+### Finally, deploy the Cloud Function
+
+```
+gcloud --project $PROJECT beta functions deploy $CLOUD_FUNCTION_NAME --stage-bucket $GCS_STAGING_BUCKET \
+--trigger-event providers/cloud.storage/eventTypes/object.change \
+--trigger-resource $GCS_SOURCE_BUCKET \
+--entry-point syncGCS --runtime nodejs10 \
+--set-env-vars GCLOUD_PROJECT=$PROJECT
+```
